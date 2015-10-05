@@ -1,0 +1,162 @@
+# Adapted from Makefile.msp430
+
+# Define que o STM32L152 será usado
+STM32L152=
+
+# Default to STM32L152RE
+SUBTARGET = CB
+
+
+### Define the CPU directory
+CONTIKI_CPU=$(CONTIKI)/cpu/stm32
+
+
+### Define the source files we have in the STM32L152 port
+CONTIKI_CPU_DIRS = 	. \
+					cmsis \
+					cmsis/arm-gcc \
+					cmsis/stm32l1xx \
+					contiki \
+					STM32L1xx_StdPeriph_Driver/inc \
+					STM32L1xx_StdPeriph_Driver/src
+
+DEV			=	clock.c
+
+STM32		=	system_stm32l1xx.c utilities.c sysIrqHandlers.c misc.c \
+				stm32l1xx_adc.c stm32l1xx_aes.c stm32l1xx_aes_util.c stm32l1xx_comp.c stm32l1xx_crc.c stm32l1xx_dac.c stm32l1xx_dbgmcu.c \
+				stm32l1xx_dma.c stm32l1xx_exti.c stm32l1xx_flash.c stm32l1xx_flash_ramfunc.c stm32l1xx_fsmc.c stm32l1xx_gpio.c stm32l1xx_i2c.c \
+				stm32l1xx_iwdg.c stm32l1xx_lcd.c stm32l1xx_opamp.c stm32l1xx_pwr.c stm32l1xx_rcc.c stm32l1xx_rtc.c stm32l1xx_sdio.c stm32l1xx_spi.c \
+				stm32l1xx_syscfg.c stm32l1xx_tim.c stm32l1xx_usart.c stm32l1xx_wwdg.c \
+				startup_stm32l1xx_hd.S
+
+TARGETLIBS	=
+
+CONTIKI_TARGET_SOURCEFILES += $(DEV) $(STM32) $(TARGETLIBS)
+
+CONTIKI_SOURCEFILES        += $(CONTIKI_TARGET_SOURCEFILES)
+
+THREADS =
+
+### Compiler definitions
+CC       = arm-none-eabi-gcc
+LD       = arm-none-eabi-ld
+AS       = arm-none-eabi-as
+AR       = arm-none-eabi-ar
+NM       = arm-none-eabi-nm
+OBJCOPY  = arm-none-eabi-objcopy
+STRIP    = arm-none-eabi-strip
+
+XSLTPROC=xsltproc
+
+PROJECT_OBJECTFILES += ${addprefix $(OBJECTDIR)/,$(CONTIKI_TARGET_MAIN:.c=.o)}
+
+#LINKERSCRIPT = $(CONTIKI_CPU)/ldscripts/stm32l152re.ld
+LINKERSCRIPT = 	$(CONTIKI_CPU)/ldscripts/mem.ld \
+				-T $(CONTIKI_CPU)/ldscripts/sections.ld
+
+STARTUP=${addprefix $(OBJECTDIR)/,startup_stm32l1xx_hd.o}
+
+ARCH_FLAGS= -march=armv7-m -mthumb
+
+CFLAGSNO = -I. -I$(CONTIKI)/core -I$(CONTIKI_CPU) -I$(CONTIKI_CPU)/loader \
+			-I$(CONTIKI)/platform/$(TARGET) \
+			-I$(CONTIKI_CPU)/cmsis \
+			-I$(CONTIKI_CPU)/cmsis/arm-gcc \
+			-I$(CONTIKI_CPU)/cmsis/stm32l1xx \
+			-I$(CONTIKI_CPU)/contiki \
+			-I$(CONTIKI_CPU)/STM32L1xx_StdPeriph_Driver/inc \
+			${addprefix -I,$(APPDIRS)} \
+			-DWITH_ASCII -DMCK=$(MCK) \
+			-Wall $(ARCH_FLAGS) -g -D SUBTARGET=$(SUBTARGET)
+
+CFLAGS  += $(CFLAGSNO) -O -DRUN_AS_SYSTEM -DROM_RUN
+LDFLAGS += -L $(CONTIKI_CPU) -T $(LINKERSCRIPT) -nostartfiles
+
+CDEPFLAGS = $(CFLAGS) -D __MAKING_DEPS__
+
+
+### Setup directory search path for source files
+
+CUSTOM_RULE_C_TO_OBJECTDIR_O=yes
+CUSTOM_RULE_C_TO_O=yes
+
+%.o: %.c
+	$(CC) $(CFLAGS) $< -c
+
+$(OBJECTDIR)/%.o: %.c | $(OBJECTDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+
+CUSTOM_RULE_S_TO_OBJECTDIR_O = yes
+%.o: %.S
+	$(CC) $(CFLAGS) $< -c
+
+$(OBJECTDIR)/%.o: %.S | $(OBJECTDIR)
+	$(CC) $(CFLAGS) $< -c  -o $@
+
+
+CUSTOM_RULE_C_TO_CO=yes
+
+%.co: %.c
+	$(CC) $(CFLAGS) $< -c -o $@
+
+CUSTOM_RULE_C_TO_CE=yes
+
+%.ce: %.o
+	$(LD) $(LDFLAGS) --relocatable -T $(CONTIKI_CPU)/merge-rodata.ld $< -o $@
+	$(STRIP) -K _init -K _fini --strip-unneeded -g -x $@
+
+CUSTOM_RULE_LINK=yes
+
+%-stripped.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+	$(STRIP) --strip-unneeded -g -x $@
+
+%-stripped.o: %.o
+	$(STRIP) --strip-unneeded -g -x -o $@ $<
+
+%.o: ${CONTIKI_TARGET}/loader/%.S
+	$(AS) -o $(notdir $(<:.S=.o)) $<
+
+%-nosyms.$(TARGET): %.co $(PROJECT_OBJECTFILES) contiki-$(TARGET).a $(STARTUP) # $(OBJECTDIR)/empty-symbols.o
+	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) -lm -lc -lnosys $(filter %.a,$^)
+
+
+%.ihex: %.$(TARGET)
+	$(OBJCOPY) $^ -O ihex $@
+
+%.bin: %.$(TARGET)
+	$(OBJCOPY) -O binary $< $@
+ 
+.PHONY: symbols.c
+ifdef CORE
+%.$(TARGET): %.co $(PROJECT_OBJECTFILES) contiki-$(TARGET).a $(STARTUP) $(OBJECTDIR)/symbols.o
+	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) -lm -lc -lnosys $(filter %.a,$^)
+
+symbols.c: $(CORE)
+	$(NM) $< | awk -f $(CONTIKI_CPU)/builtins.awk -f ../../tools/mknmlist > symbols.c
+
+else
+%.$(TARGET): %-nosyms.$(TARGET)
+	ln -sf $< $@
+	$(OBJCOPY) $^ -O ihex $(CONTIKI_PROJECT).hex
+	echo "hex"	
+endif
+
+empty-symbols.c:
+	cp ${CONTIKI}/tools/empty-symbols.c symbols.c
+	cp ${CONTIKI}/tools/empty-symbols.h symbols.h
+
+
+# Don't use core/loader/elfloader.c, use elfloader-otf.c instead
+$(OBJECTDIR)/elfloader.o: | $(OBJECTDIR)
+	echo -n >$@
+
+clean: clean_cpu
+
+.PHONY: stm32test_clean
+
+clean_cpu:
+	-rm -rf $(BUILTSRCDIR)
+
+.PRECIOUS: %-nosyms.$(TARGET)
