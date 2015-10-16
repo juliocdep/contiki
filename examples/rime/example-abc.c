@@ -41,45 +41,60 @@
 #include "net/rime/rime.h"
 #include "random.h"
 
-#include "dev/button-sensor.h"
+#include "board.h"
 
-#include "dev/leds.h"
+/*#include "dev/button-sensor.h"
 
-#include <stdio.h>
+ #include "dev/leds.h"
+
+ #include <stdio.h>*/
+
+char* msg = "Hello";
+
 /*---------------------------------------------------------------------------*/
 PROCESS(example_abc_process, "ABC example");
 AUTOSTART_PROCESSES(&example_abc_process);
 /*---------------------------------------------------------------------------*/
-static void
-abc_recv(struct abc_conn *c)
+
+static void abc_recv(struct abc_conn *c)
 {
-  printf("abc message received '%s'\n", (char *)packetbuf_dataptr());
+	char* recivedMsg = (char *) packetbuf_dataptr();
+
+	if (strncmp((const char*) recivedMsg, (const char*) msg, 6) == 0)
+	{
+		LedToggle(LED_DBG1);
+	}
+
+	printf("abc message received '%s'\n", (char *)packetbuf_dataptr());
 }
+
 static const struct abc_callbacks abc_call = {abc_recv};
 static struct abc_conn abc;
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(example_abc_process, ev, data)
 {
-  static struct etimer et;
+	static struct etimer et;
 
-  PROCESS_EXITHANDLER(abc_close(&abc);)
+	PROCESS_EXITHANDLER(abc_close(&abc);)
 
-  PROCESS_BEGIN();
+	PROCESS_BEGIN();
 
-  abc_open(&abc, 128, &abc_call);
+	abc_open(&abc, 128, &abc_call);
 
-  while(1) {
+	while (1)
+	{
+		/* Delay 2-4 seconds */
+		etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 2));
 
-    /* Delay 2-4 seconds */
-    etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 2));
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		packetbuf_copyfrom("Hello", 6);
+		abc_send(&abc);
+		LedToggle(LED_DBG2);
+		printf("abc message sent\n");
+	}
 
-    packetbuf_copyfrom("Hello", 6);
-    abc_send(&abc);
-    printf("abc message sent\n");
-  }
-
-  PROCESS_END();
+	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

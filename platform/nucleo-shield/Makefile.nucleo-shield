@@ -7,7 +7,14 @@ CONTIKI_TARGET_DIRS = 	. \
 						radio \
 						radio/sx1276 \
 						system \
-						system/crypto
+						system/crypto \
+						dev
+
+MODULES += \
+	core/net \
+	core/net/mac \
+	core/net/mac/sicslowmac \
+	core/net/llsec
 
 # Master clock frequency
 MCK=48000000
@@ -19,7 +26,7 @@ endif
 
 NUCLEO-SHIELD_SOURCEFILES = board.c button-board.c gpio-board.c led-board.c i2c-board.c spi-board.c timer-board.c rtc-board.c sx1276-board.c \
 							delay.c eeprom.c fifo.c gpio.c gps.c i2c.c timer-stm.c \
-							sx1276.c
+							sx1276.c semtech-radio.c
 
 CONTIKI_TARGET_SOURCEFILES += $(SENSORS) $(STEPPER_ROBOT) \
  $(CODEPROP_SOURCES) $(CONTIKI_TARGET_MAIN) $(NUCLEO-SHIELD_SOURCEFILES)
@@ -34,4 +41,3 @@ include $(CONTIKI)/cpu/stm32/Makefile.stm32l152re
 ifndef BASE_IP
 BASE_IP := 172.16.1.1
 endif
-

@@ -9,26 +9,40 @@
 #include <sys/autostart.h>
 #include <clock.h>
 
+#include "contiki.h"
+#include "net/netstack.h"
+#include "net/rime/rime.h"
+
 #include "board.h"
+
+extern void initialise_monitor_handles(void);
 
 unsigned int idle_count = 0;
 
 int main()
 {
+	initialise_monitor_handles();
+
 //  dbg_setup_uart();
-//  printf("Initialising\n");
+	printf("Initialising\n");
 
 	BoardInitMcu();
 	BoardInitPeriph();
 
-	LedOn(LED_RX);
-	LedOn(LED_TX);
+//	LedOn(LED_RX);
+//	LedOn(LED_TX);
 
 	clock_init();
 	process_init();
+
+	ctimer_init();
+	//rtimer_init();
+	queuebuf_init();
+	netstack_init();
+
 	process_start(&etimer_process, NULL);
 	autostart_start(autostart_processes);
-//  printf("Processes running\n");
+	printf("Processes running\n");
 	while (1)
 	{
 		do

@@ -53,6 +53,7 @@ PROJECT_OBJECTFILES += ${addprefix $(OBJECTDIR)/,$(CONTIKI_TARGET_MAIN:.c=.o)}
 #LINKERSCRIPT = $(CONTIKI_CPU)/ldscripts/stm32l152re.ld
 LINKERSCRIPT = 	$(CONTIKI_CPU)/ldscripts/mem.ld \
 				-T $(CONTIKI_CPU)/ldscripts/sections.ld
+#				-T $(CONTIKI_CPU)/ldscripts/libs.ld
 
 STARTUP=${addprefix $(OBJECTDIR)/,startup_stm32l1xx_hd.o}
 
@@ -72,8 +73,16 @@ CFLAGSNO = -I. -I$(CONTIKI)/core -I$(CONTIKI_CPU) -I$(CONTIKI_CPU)/loader \
 CFLAGS  += $(CFLAGSNO) -O -DRUN_AS_SYSTEM -DROM_RUN
 LDFLAGS += -L $(CONTIKI_CPU) -T $(LINKERSCRIPT) -nostartfiles
 
+# Para o semihosting (printf no debug)
+LDFLAGS += --specs=rdimon.specs -lrdimon
+
 CDEPFLAGS = $(CFLAGS) -D __MAKING_DEPS__
 
+# Used libraries
+# Sem semihosting
+#LDLIBS += -lm -lc -lnosys
+# Com semihosting
+LDLIBS += -lm -lc
 
 ### Setup directory search path for source files
 
@@ -119,7 +128,7 @@ CUSTOM_RULE_LINK=yes
 	$(AS) -o $(notdir $(<:.S=.o)) $<
 
 %-nosyms.$(TARGET): %.co $(PROJECT_OBJECTFILES) contiki-$(TARGET).a $(STARTUP) # $(OBJECTDIR)/empty-symbols.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) -lm -lc -lnosys $(filter %.a,$^)
+	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) $(LDLIBS) $(filter %.a,$^)
 
 
 %.ihex: %.$(TARGET)
@@ -131,7 +140,7 @@ CUSTOM_RULE_LINK=yes
 .PHONY: symbols.c
 ifdef CORE
 %.$(TARGET): %.co $(PROJECT_OBJECTFILES) contiki-$(TARGET).a $(STARTUP) $(OBJECTDIR)/symbols.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) -lm -lc -lnosys $(filter %.a,$^)
+	$(CC) $(LDFLAGS) $(CFLAGS) -nostartfiles -o $@ $(filter-out %.a,$^) $(filter %.a,$^) $(LDLIBS) $(filter %.a,$^)
 
 symbols.c: $(CORE)
 	$(NM) $< | awk -f $(CONTIKI_CPU)/builtins.awk -f ../../tools/mknmlist > symbols.c

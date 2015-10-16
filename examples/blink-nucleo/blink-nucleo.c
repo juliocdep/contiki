@@ -37,23 +37,24 @@
  *         Adam Dunkels <adam@sics.se>
  */
 
+#include <stdio.h>
+
 #include "contiki.h"
 
 #include "led-board.h"
-#include "delay.h"
 
 /*---------------------------------------------------------------------------*/
-PROCESS(blink_nucleo_process, "Blink nucleo process");
-AUTOSTART_PROCESSES(&blink_nucleo_process);
+PROCESS(blink_DBG1_process, "Blink DBG1 process");
+PROCESS(blink_DBG2_process, "Blink DBG2 process");
+
+AUTOSTART_PROCESSES(&blink_DBG1_process, &blink_DBG2_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(blink_nucleo_process, ev, data)
+
+PROCESS_THREAD(blink_DBG1_process, ev, data)
 {
 	PROCESS_BEGIN();
 
 	static struct etimer et;
-
-	LedOn(LED_DBG1);
-	LedOff(LED_DBG2);
 
 	while (1)
 	{
@@ -61,9 +62,29 @@ PROCESS_THREAD(blink_nucleo_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 		LedToggle(LED_DBG1);
-		LedToggle(LED_DBG2);
+
+		printf("LED_DBG1 toggled!\n");
 	}
 
 	PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+
+PROCESS_THREAD(blink_DBG2_process, ev, data)
+{
+	PROCESS_BEGIN();
+
+	static struct etimer et;
+
+	while (1)
+	{
+		etimer_set(&et, CLOCK_SECOND * 0.5);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+		LedToggle(LED_DBG2);
+
+		printf("LED_DBG2 toggled!\n");
+	}
+
+	PROCESS_END();
+}
