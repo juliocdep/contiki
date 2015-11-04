@@ -41,9 +41,11 @@
 #include "net/rime/rime.h"
 #include "net/rime/mesh.h"
 
-#include "dev/button-sensor.h"
+#include "board.h"
 
-#include "dev/leds.h"
+/*#include "dev/button-sensor.h"
+
+#include "dev/leds.h"*/
 
 #include <stdio.h>
 #include <string.h>
@@ -87,13 +89,14 @@ PROCESS_THREAD(example_mesh_process, ev, data)
 
   mesh_open(&mesh, 132, &callbacks);
 
-  SENSORS_ACTIVATE(button_sensor);
+//  SENSORS_ACTIVATE(button_sensor);
 
   while(1) {
     linkaddr_t addr;
 
     /* Wait for button click before sending the first message. */
-    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
+    while (ButtonState(BTN_LEFT) == RELEASED);
+//    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event && data == &button_sensor);
 
     printf("Button clicked\n");
 

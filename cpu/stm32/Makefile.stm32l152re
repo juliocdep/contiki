@@ -20,7 +20,7 @@ CONTIKI_CPU_DIRS = 	. \
 					STM32L1xx_StdPeriph_Driver/inc \
 					STM32L1xx_StdPeriph_Driver/src
 
-DEV			=	clock.c
+DEV			=	clock.c watchdog.c rtimer-arch.c
 
 STM32		=	system_stm32l1xx.c utilities.c sysIrqHandlers.c misc.c \
 				stm32l1xx_adc.c stm32l1xx_aes.c stm32l1xx_aes_util.c stm32l1xx_comp.c stm32l1xx_crc.c stm32l1xx_dac.c stm32l1xx_dbgmcu.c \
@@ -74,15 +74,15 @@ CFLAGS  += $(CFLAGSNO) -O -DRUN_AS_SYSTEM -DROM_RUN
 LDFLAGS += -L $(CONTIKI_CPU) -T $(LINKERSCRIPT) -nostartfiles
 
 # Para o semihosting (printf no debug)
-LDFLAGS += --specs=rdimon.specs -lrdimon
+#LDFLAGS += --specs=rdimon.specs -lrdimon
 
 CDEPFLAGS = $(CFLAGS) -D __MAKING_DEPS__
 
 # Used libraries
 # Sem semihosting
-#LDLIBS += -lm -lc -lnosys
+LDLIBS += -lm -lc -lnosys
 # Com semihosting
-LDLIBS += -lm -lc
+#LDLIBS += -lm -lc
 
 ### Setup directory search path for source files
 

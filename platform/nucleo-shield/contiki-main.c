@@ -15,13 +15,19 @@
 
 #include "board.h"
 
+#define SEMIHOSTING		0
+
+#if SEMIHOSTING
 extern void initialise_monitor_handles(void);
+#endif
 
 unsigned int idle_count = 0;
 
 int main()
 {
+#if SEMIHOSTING
 	initialise_monitor_handles();
+#endif
 
 //  dbg_setup_uart();
 	printf("Initialising\n");
@@ -29,8 +35,8 @@ int main()
 	BoardInitMcu();
 	BoardInitPeriph();
 
-//	LedOn(LED_RX);
-//	LedOn(LED_TX);
+	LedOn(LED_RX);
+	LedOn(LED_TX);
 
 	clock_init();
 	process_init();

@@ -60,12 +60,20 @@ static void abc_recv(struct abc_conn *c)
 {
 	char* recivedMsg = (char *) packetbuf_dataptr();
 
-	if (strncmp((const char*) recivedMsg, (const char*) msg, 6) == 0)
+	if (strncmp((const char*) recivedMsg, "on", 2) == 0)
+	{
+		LedOn(LED_DBG1);
+	}
+	else if (strncmp((const char*) recivedMsg, "off", 3) == 0)
+	{
+		LedOff(LED_DBG1);
+	}
+	else if (strncmp((const char*) recivedMsg, "toggle", 6) == 0)
 	{
 		LedToggle(LED_DBG1);
 	}
 
-	printf("abc message received '%s'\n", (char *)packetbuf_dataptr());
+	printf("abc message received '%s'\n", (char *) recivedMsg);
 }
 
 static const struct abc_callbacks abc_call = {abc_recv};
@@ -75,24 +83,50 @@ static struct abc_conn abc;
 PROCESS_THREAD(example_abc_process, ev, data)
 {
 	static struct etimer et;
+	int i;
 
 	PROCESS_EXITHANDLER(abc_close(&abc);)
 
 	PROCESS_BEGIN();
 
+	/*linkaddr_t newAddres;
+	 newAddres.u8[0] = 3;
+	 newAddres.u8[1] = 3;
+	 linkaddr_set_node_addr(newAddres);*/
+
 	abc_open(&abc, 128, &abc_call);
 
 	while (1)
 	{
+//		PROCESS_WAIT_EVENT();
+
 		/* Delay 2-4 seconds */
 		etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 2));
 
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-		packetbuf_copyfrom("Hello", 6);
+		printf("\n\nEnter a number:\n");
+		printf("1 - Led on\n2 - Led off\n3 - Toggle Led\n");
+		scanf("%i", &i);
+
+		switch (i)
+		{
+		case 1:
+			packetbuf_copyfrom("on", 3);
+			break;
+
+		case 2:
+			packetbuf_copyfrom("off", 4);
+			break;
+
+		case 3:
+		default:
+			packetbuf_copyfrom("toggle", 7);
+			break;
+		}
+
 		abc_send(&abc);
-		LedToggle(LED_DBG2);
-		printf("abc message sent\n");
+		printf("abc message sent (%i)\n", i);
 	}
 
 	PROCESS_END();
