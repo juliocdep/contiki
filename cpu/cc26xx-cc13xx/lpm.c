@@ -84,7 +84,7 @@ void
 lpm_shutdown(uint32_t wakeup_pin, uint32_t io_pull, uint32_t wake_on)
 {
   lpm_registered_module_t *module;
-  int i, j;
+  int i;
   uint32_t io_cfg = (IOC_STD_INPUT & ~IOC_IOPULL_M) | io_pull |
     wake_on;
 
@@ -109,18 +109,6 @@ lpm_shutdown(uint32_t wakeup_pin, uint32_t io_pull, uint32_t wake_on)
 
   watchdog_periodic();
 
-  /* fade away....... */
-  j = 1000;
-
-  for(i = j; i > 0; --i) {
-    leds_on(LEDS_ALL);
-    clock_delay_usec(i);
-    leds_off(LEDS_ALL);
-    clock_delay_usec(j - i);
-  }
-
-  leds_off(LEDS_ALL);
-
   /* Notify all modules that we're shutting down */
   for(module = list_head(modules_list); module != NULL;
       module = module->next) {
@@ -130,8 +118,10 @@ lpm_shutdown(uint32_t wakeup_pin, uint32_t io_pull, uint32_t wake_on)
   }
 
   /* Configure the wakeup trigger */
-  ti_lib_gpio_dir_mode_set((1 << wakeup_pin), GPIO_DIR_MODE_IN);
-  ti_lib_ioc_port_configure_set(wakeup_pin, IOC_PORT_GPIO, io_cfg);
+  if(wakeup_pin != IOID_UNUSED) {
+    ti_lib_gpio_dir_mode_set((1 << wakeup_pin), GPIO_DIR_MODE_IN);
+    ti_lib_ioc_port_configure_set(wakeup_pin, IOC_PORT_GPIO, io_cfg);
+  }
 
   /* Freeze I/O latches in AON */
   ti_lib_aon_ioc_freeze_enable();
